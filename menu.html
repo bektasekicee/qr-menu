@@ -3,18 +3,19 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-<title>QR Menu</title>
+<title>QR Menü</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#FAFAFA;color:#1A1A2E;padding-bottom:80px}
 .hdr{background:linear-gradient(135deg,#1A1A2E,#16213E);color:#fff;padding:16px;text-align:center;position:sticky;top:0;z-index:100}
-.hdr h1{font-size:18px;font-weight:800}.hdr p{font-size:12px;opacity:.7;margin-top:2px}
-.cats{display:flex;gap:8px;padding:12px 16px;overflow-x:auto;background:#fff;border-bottom:1px solid #eee;position:sticky;top:56px;z-index:99}
+.hdr h1{font-size:18px;font-weight:800}
+.hdr p{font-size:12px;opacity:.7;margin-top:2px}
+.cats{display:flex;gap:8px;padding:12px 16px;overflow-x:auto;background:#fff;border-bottom:1px solid #eee;position:sticky;top:56px;z-index:99;-webkit-overflow-scrolling:touch}
 .cats::-webkit-scrollbar{display:none}
-.cat{padding:8px 16px;border-radius:20px;font-size:13px;font-weight:600;white-space:nowrap;border:1.5px solid #E0E0E0;background:#fff;color:#666;cursor:pointer}
+.cat{padding:8px 16px;border-radius:20px;font-size:13px;font-weight:600;white-space:nowrap;border:1.5px solid #E0E0E0;background:#fff;color:#666;cursor:pointer;transition:.2s}
 .cat.active{background:#1A1A2E;color:#fff;border-color:#1A1A2E}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;padding:16px}
-.card{background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);cursor:pointer}
+.card{background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);cursor:pointer;transition:transform .15s}
 .card:active{transform:scale(.97)}
 .card-img{height:100px;display:flex;align-items:center;justify-content:center;background:#f5f5f5;font-size:40px}
 .card-body{padding:10px}
@@ -39,7 +40,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .add-btn{width:100%;padding:14px;border-radius:12px;background:linear-gradient(135deg,#1A1A2E,#16213E);color:#fff;font-size:15px;font-weight:700;border:none;cursor:pointer;position:sticky;bottom:0}
 .note-input{width:100%;padding:10px;border:1.5px solid #eee;border-radius:10px;font-size:13px;margin:8px 0;resize:none}
 .cart-item{display:flex;align-items:center;padding:12px 0;border-bottom:1px solid #f0f0f0}
-.cart-item .ci-info{flex:1}.cart-item .ci-name{font-size:13px;font-weight:700}
+.cart-item .ci-info{flex:1}
+.cart-item .ci-name{font-size:13px;font-weight:700}
 .cart-item .ci-opts{font-size:11px;color:#999}
 .cart-item .ci-price{font-size:14px;font-weight:700;color:#E63946}
 .cart-item .ci-del{width:28px;height:28px;border-radius:50%;background:#FFE5E5;border:none;color:#E63946;font-size:14px;cursor:pointer;margin-left:8px}
@@ -67,12 +69,276 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 </style>
 </head>
 <body>
-<div id="app"><div class="loading"><div class="spin"></div><p>Menu yukleniyor...</p></div></div>
+
+<div id="app">
+  <div class="loading">
+    <div class="spin"></div>
+    <p>Menü yükleniyor...</p>
+  </div>
+</div>
+
 <script>
-var params=new URLSearchParams(window.location.search);var qrCode=params.get("qr")||"";var API_BASE="https://hdpzqkwrvfjaemiwucyk.supabase.co/functions/v1/qr-menu";var CURRENCY="TL";var TABLE_ID=0;var BRANCH_ID=0;var SESSION_TOKEN="";var TABLE_NAME="";var RESTAURANT_NAME="";var categories=[],products=[],cart=[],selCat=null,detailProduct=null,detailQty=1,detailOptions={};init();function init(){if(!qrCode){showError("Gecersiz QR kod");return}fetch(API_BASE+"/api/table-info?qr="+qrCode).then(function(r){return r.json()}).then(function(d){if(d.error){showError(d.error);return}if(!d.sessionActive){showWaiting(d.tableName||"Masa");return}TABLE_ID=d.tableId;BRANCH_ID=d.branchId;SESSION_TOKEN=d.sessionToken;TABLE_NAME=d.tableName;RESTAURANT_NAME=d.restaurantName||"Restoran";CURRENCY=d.currency||"TL";showMenu();loadMenu()}).catch(function(){showError("Baglanti hatasi")})}function showError(msg){document.getElementById("app").innerHTML='<div class="err-bg"><div class="err-card"><p style="font-size:48px">&#9888;</p><p style="color:#666">'+msg+'</p></div></div>'}function showWaiting(tableName){document.body.className="wait-bg";document.getElementById("app").innerHTML='<div class="wait-card"><div class="wait-icon">&#127861;</div><h2>Hos Geldiniz!</h2><p>Siparis verebilmek icin lutfen garsondan<br><strong>masanizi acmasini</strong> isteyin.</p><div class="wait-tn">&#128205; '+tableName+'</div><br><button class="wait-retry" onclick="location.reload()">&#128260; Tekrar Dene</button><p style="margin-top:16px;font-size:11px;opacity:.4">Masa acildiginda otomatik yenilenir</p></div>';setInterval(function(){fetch(API_BASE+"/api/session-check?qr="+qrCode).then(function(r){return r.json()}).then(function(d){if(d.active)location.reload()}).catch(function(){})},5000)}function showMenu(){document.body.className="";document.getElementById("app").innerHTML='<div class="hdr"><h1>'+RESTAURANT_NAME+'</h1><p>&#128205; '+TABLE_NAME+'</p></div><div class="cats" id="cats"></div><div class="grid" id="grid"></div><div class="empty" id="empty" style="display:none"><div class="e-icon">&#127860;</div><p>Bu kategoride urun yok</p></div><div class="bar" id="bar" onclick="openCart()"><span>&#128722; Sepet <span class="cnt" id="barCnt">0</span></span><span class="tot" id="barTot">'+CURRENCY+'0</span></div><div class="modal" id="detailModal"><div class="modal-content" id="detailContent"></div></div><div class="modal" id="cartModal"><div class="modal-content"><button class="close-btn" onclick="closeCart()">&#10005;</button><h2>&#128722; Sepetiniz</h2><div id="cartList"></div><div style="display:flex;justify-content:space-between;margin-top:12px;font-size:16px;font-weight:800"><span>Toplam</span><span id="cartTotal" style="color:#E63946"></span></div><button class="submit-btn" onclick="submitOrder()">&#10003; Siparisi Gonder</button></div></div><div class="success" id="success"><div class="big">&#9989;</div><h2>Siparisiniz Alindi!</h2><p style="opacity:.8">Siparisiniz mutfaga iletildi</p><div class="num" id="successNum">#0</div><button onclick="resetOrder()">Yeni Siparis Ver</button></div>'}function loadMenu(){fetch(API_BASE+"/api/menu?branch="+BRANCH_ID).then(function(r){return r.json()}).then(function(d){categories=d.categories||[];products=d.products||[];renderCats();if(categories.length>0)selectCat(categories[0].id);else renderProducts()}).catch(function(e){console.error(e)})}function renderCats(){var c=document.getElementById("cats");if(!c)return;c.innerHTML=categories.map(function(cat){return'<div class="cat'+(cat.id===selCat?' active':'')+'" onclick="selectCat('+cat.id+')">'+(cat.icon||'&#128193;')+' '+cat.name+'</div>'}).join('')}function selectCat(id){selCat=id;renderCats();renderProducts()}function renderProducts(){var filtered=selCat?products.filter(function(p){return p.category_id===selCat}):products;var g=document.getElementById("grid");var e=document.getElementById("empty");if(!g||!e)return;if(filtered.length===0){g.innerHTML='';e.style.display='block';return}e.style.display='none';g.innerHTML=filtered.map(function(p){return'<div class="card" onclick="openDetail('+p.id+')"><div class="card-img">'+(p.image||'&#127860;')+'</div><div class="card-body"><h3>'+p.name+'</h3>'+(p.description?'<div class="desc">'+p.description+'</div>':'')+'<span class="price">'+CURRENCY+Number(p.price).toFixed(2)+'</span><button class="add" onclick="event.stopPropagation();quickAdd('+p.id+')">+</button></div></div>'}).join('')}function openDetail(pid){var p=products.find(function(x){return x.id===pid});if(!p)return;detailProduct=p;detailQty=1;detailOptions={};var html='<button class="close-btn" onclick="closeDetail()">&#10005;</button>';html+='<div style="text-align:center;font-size:48px;padding:16px">'+(p.image||'&#127860;')+'</div>';html+='<h2>'+p.name+'</h2>';if(p.description)html+='<p style="color:#999;font-size:13px;margin-bottom:12px">'+p.description+'</p>';fetch(API_BASE+"/api/options/"+pid).then(function(r){return r.json()}).then(function(d){var groups=d.groups||[];for(var gi=0;gi<groups.length;gi++){var g=groups[gi];html+='<div class="opt-group"><h4>'+g.name+(g.isRequired?' *':'')+'</h4>';for(var ii=0;ii<g.items.length;ii++){var it=g.items[ii];var inputType=(g.type==='single'||g.maxSelect===1)?'radio':'checkbox';var checked=it.isDefault?' checked':'';html+='<div class="opt-item" onclick="toggleOpt(this,'+g.id+','+it.id+',\''+inputType+'\','+it.priceAdjustment+',\''+it.name.replace(/'/g,"\\'")+'\')">';html+='<input type="'+inputType+'" name="grp'+g.id+'"'+checked+' style="pointer-events:none">';html+='<label>'+it.name+'</label>';if(it.priceAdjustment>0)html+='<span class="adj">+'+CURRENCY+Number(it.priceAdjustment).toFixed(2)+'</span>';html+='</div>';if(it.isDefault){if(!detailOptions[g.id])detailOptions[g.id]=[];if(inputType==='radio')detailOptions[g.id]=[{itemId:it.id,name:it.name,price:it.priceAdjustment}];else detailOptions[g.id].push({itemId:it.id,name:it.name,price:it.priceAdjustment})}}html+='</div>'}finishDetail(html,p)}).catch(function(){finishDetail(html,p)})}function finishDetail(html,p){html+='<textarea class="note-input" id="detailNote" rows="2" placeholder="Notunuz (opsiyonel)"></textarea>';html+='<div class="qty-row"><button class="qty-btn" onclick="changeQty(-1)">&#8722;</button><span class="qty-val" id="qtyVal">1</span><button class="qty-btn" onclick="changeQty(1)">+</button></div>';html+='<button class="add-btn" id="addBtn" onclick="addToCart()">Sepete Ekle - '+CURRENCY+Number(p.price).toFixed(2)+'</button>';document.getElementById("detailContent").innerHTML=html;document.getElementById("detailModal").style.display="block";updateAddBtn()}function toggleOpt(el,gid,iid,type,price,name){if(!detailOptions[gid])detailOptions[gid]=[];if(type==='radio'){detailOptions[gid]=[{itemId:iid,name:name,price:price}]}else{var idx=-1;for(var i=0;i<detailOptions[gid].length;i++){if(detailOptions[gid][i].itemId===iid){idx=i;break}}if(idx>=0)detailOptions[gid].splice(idx,1);else detailOptions[gid].push({itemId:iid,name:name,price:price})}var input=el.querySelector('input');if(type==='radio'){var inputs=el.parentElement.querySelectorAll('input');for(var i=0;i<inputs.length;i++)inputs[i].checked=false;input.checked=true}else{var found=false;for(var i=0;i<detailOptions[gid].length;i++){if(detailOptions[gid][i].itemId===iid){found=true;break}}input.checked=found}updateAddBtn()}function changeQty(d){detailQty=Math.max(1,detailQty+d);document.getElementById('qtyVal').textContent=detailQty;updateAddBtn()}function updateAddBtn(){var optPrice=0;var keys=Object.keys(detailOptions);for(var k=0;k<keys.length;k++){var arr=detailOptions[keys[k]];for(var i=0;i<arr.length;i++)optPrice+=arr[i].price}var total=(detailProduct.price+optPrice)*detailQty;document.getElementById('addBtn').textContent='Sepete Ekle - '+CURRENCY+total.toFixed(2)}function addToCart(){var optPrice=0;var opts=[];var keys=Object.keys(detailOptions);for(var k=0;k<keys.length;k++){var gid=keys[k];var arr=detailOptions[gid];for(var i=0;i<arr.length;i++){optPrice+=arr[i].price;opts.push({groupId:+gid,itemId:arr[i].itemId,name:arr[i].name,price:arr[i].price})}}var note=document.getElementById('detailNote')?document.getElementById('detailNote').value:'';cart.push({productId:detailProduct.id,productName:detailProduct.name,qty:detailQty,unitPrice:detailProduct.price,optionPrice:optPrice,options:opts,note:note});closeDetail();updateBar()}function quickAdd(pid){var p=products.find(function(x){return x.id===pid});if(!p)return;cart.push({productId:p.id,productName:p.name,qty:1,unitPrice:p.price,optionPrice:0,options:[],note:''});updateBar()}function closeDetail(){document.getElementById('detailModal').style.display='none'}function updateBar(){var cnt=0,tot=0;for(var i=0;i<cart.length;i++){cnt+=cart[i].qty;tot+=(cart[i].unitPrice+cart[i].optionPrice)*cart[i].qty}document.getElementById('barCnt').textContent=cnt;document.getElementById('barTot').textContent=CURRENCY+tot.toFixed(2);document.getElementById('bar').style.display=cnt>0?'flex':'none'}function openCart(){var list=document.getElementById('cartList');var html='';for(var i=0;i<cart.length;i++){var c=cart[i];html+='<div class="cart-item"><div class="ci-info"><div class="ci-name">'+c.qty+'x '+c.productName+'</div>';if(c.options.length)html+='<div class="ci-opts">'+c.options.map(function(o){return o.name}).join(', ')+'</div>';if(c.note)html+='<div class="ci-opts">&#128221; '+c.note+'</div>';html+='</div><div class="ci-price">'+CURRENCY+((c.unitPrice+c.optionPrice)*c.qty).toFixed(2)+'</div><button class="ci-del" onclick="removeItem('+i+')">&#10005;</button></div>'}list.innerHTML=html;var tot=0;for(var i=0;i<cart.length;i++)tot+=(cart[i].unitPrice+cart[i].optionPrice)*cart[i].qty;document.getElementById('cartTotal').textContent=CURRENCY+tot.toFixed(2);document.getElementById('cartModal').style.display='block'}function closeCart(){document.getElementById('cartModal').style.display='none'}function removeItem(i){cart.splice(i,1);updateBar();openCart();if(cart.length===0)closeCart()}function submitOrder(){if(cart.length===0)return;var btn=document.querySelector('.submit-btn');btn.disabled=true;btn.textContent='Gonderiliyor...';var items=[];for(var i=0;i<cart.length;i++){var c=cart[i];items.push({productId:c.productId,productName:c.productName,qty:c.qty,unitPrice:c.unitPrice,optionPrice:c.optionPrice,options:c.options,note:c.note})}fetch(API_BASE+"/api/order",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({branchId:BRANCH_ID,tableId:TABLE_ID,items:items})}).then(function(r){return r.json()}).then(function(d){if(d.success){document.getElementById('successNum').textContent='#'+d.orderNumber;document.getElementById('success').style.display='flex';closeCart()}else{alert(d.error||'Hata olustu');btn.disabled=false;btn.textContent='Siparisi Gonder'}}).catch(function(){alert('Baglanti hatasi');btn.disabled=false;btn.textContent='Siparisi Gonder'})}function resetOrder(){cart=[];updateBar();document.getElementById('success').style.display='none';var btn=document.querySelector('.submit-btn');if(btn){btn.disabled=false;btn.textContent='Siparisi Gonder'}}
+// URL'den parametreleri al
+var params = new URLSearchParams(window.location.search);
+var qrCode = params.get("qr") || "";
+var API_BASE = "https://hdpzqkwrvfjaemiwucyk.supabase.co/functions/v1/qr-menu";
+var CURRENCY = "₺";
+var TABLE_ID = 0;
+var BRANCH_ID = 0;
+var SESSION_TOKEN = "";
+var TABLE_NAME = "";
+var RESTAURANT_NAME = "";
+
+var categories = [];
+var products = [];
+var cart = [];
+var selCat = null;
+var detailProduct = null;
+var detailQty = 1;
+var detailOptions = {};
+
+// Başlat
+init();
+
+function init() {
+  if (!qrCode) { showError("Geçersiz QR kod"); return; }
+  // Masa + oturum bilgisi al
+  fetch(API_BASE + "/api/table-info?qr=" + qrCode)
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (d.error) { showError(d.error); return; }
+      if (!d.sessionActive) { showWaiting(d.tableName || "Masa"); return; }
+      TABLE_ID = d.tableId;
+      BRANCH_ID = d.branchId;
+      SESSION_TOKEN = d.sessionToken;
+      TABLE_NAME = d.tableName;
+      RESTAURANT_NAME = d.restaurantName || "Restoran";
+      CURRENCY = d.currency || "₺";
+      showMenu();
+      loadMenu();
+    })
+    .catch(function() { showError("Bağlantı hatası"); });
+}
+
+function showError(msg) {
+  document.getElementById("app").innerHTML =
+    '<div class="err-bg"><div class="err-card"><p style="font-size:48px">⚠️</p><p style="color:#666">' + msg + '</p></div></div>';
+}
+
+function showWaiting(tableName) {
+  document.body.className = "wait-bg";
+  document.getElementById("app").innerHTML =
+    '<div class="wait-card"><div class="wait-icon">🍽️</div><h2>Hoş Geldiniz!</h2>' +
+    '<p>Sipariş verebilmek için lütfen garsondan<br><strong>masanızı açmasını</strong> isteyin.</p>' +
+    '<div class="wait-tn">📍 ' + tableName + '</div><br>' +
+    '<button class="wait-retry" onclick="location.reload()">🔄 Tekrar Dene</button>' +
+    '<p style="margin-top:16px;font-size:11px;opacity:.4">Masa açıldığında otomatik yenilenir</p></div>';
+  // 5 saniyede bir kontrol
+  setInterval(function() {
+    fetch(API_BASE + "/api/session-check?qr=" + qrCode)
+      .then(function(r) { return r.json(); })
+      .then(function(d) { if (d.active) location.reload(); })
+      .catch(function() {});
+  }, 5000);
+}
+
+function showMenu() {
+  document.body.className = "";
+  document.getElementById("app").innerHTML =
+    '<div class="hdr"><h1>' + RESTAURANT_NAME + '</h1><p>📍 ' + TABLE_NAME + '</p></div>' +
+    '<div class="cats" id="cats"></div>' +
+    '<div class="grid" id="grid"></div>' +
+    '<div class="empty" id="empty" style="display:none"><div class="e-icon">🍽️</div><p>Bu kategoride ürün yok</p></div>' +
+    '<div class="bar" id="bar" onclick="openCart()"><span>🛒 Sepet <span class="cnt" id="barCnt">0</span></span><span class="tot" id="barTot">' + CURRENCY + '0</span></div>' +
+    '<div class="modal" id="detailModal"><div class="modal-content" id="detailContent"></div></div>' +
+    '<div class="modal" id="cartModal"><div class="modal-content">' +
+    '<button class="close-btn" onclick="closeCart()">✕</button><h2>🛒 Sepetiniz</h2>' +
+    '<div id="cartList"></div>' +
+    '<div style="display:flex;justify-content:space-between;margin-top:12px;font-size:16px;font-weight:800"><span>Toplam</span><span id="cartTotal" style="color:#E63946"></span></div>' +
+    '<button class="submit-btn" onclick="submitOrder()">✓ Siparişi Gönder</button></div></div>' +
+    '<div class="success" id="success"><div class="big">✅</div><h2>Siparişiniz Alındı!</h2>' +
+    '<p style="opacity:.8">Siparişiniz mutfağa iletildi</p>' +
+    '<div class="num" id="successNum">#0</div>' +
+    '<button onclick="resetOrder()">Yeni Sipariş Ver</button></div>';
+}
+
+function loadMenu() {
+  fetch(API_BASE + "/api/menu?branch=" + BRANCH_ID)
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      categories = d.categories || [];
+      products = d.products || [];
+      renderCats();
+      if (categories.length > 0) selectCat(categories[0].id);
+      else renderProducts();
+    })
+    .catch(function(e) { console.error(e); });
+}
+
+function renderCats() {
+  var c = document.getElementById("cats");
+  if (!c) return;
+  c.innerHTML = categories.map(function(cat) {
+    return '<div class="cat' + (cat.id === selCat ? ' active' : '') + '" onclick="selectCat(' + cat.id + ')">' + (cat.icon || '📁') + ' ' + cat.name + '</div>';
+  }).join('');
+}
+
+function selectCat(id) { selCat = id; renderCats(); renderProducts(); }
+
+function renderProducts() {
+  var filtered = selCat ? products.filter(function(p) { return p.category_id === selCat; }) : products;
+  var g = document.getElementById("grid");
+  var e = document.getElementById("empty");
+  if (!g || !e) return;
+  if (filtered.length === 0) { g.innerHTML = ''; e.style.display = 'block'; return; }
+  e.style.display = 'none';
+  g.innerHTML = filtered.map(function(p) {
+    return '<div class="card" onclick="openDetail(' + p.id + ')"><div class="card-img">' + (p.image || '🍽️') + '</div><div class="card-body"><h3>' + p.name + '</h3>' + (p.description ? '<div class="desc">' + p.description + '</div>' : '') + '<span class="price">' + CURRENCY + Number(p.price).toFixed(2) + '</span><button class="add" onclick="event.stopPropagation();openDetail(' + p.id + ')">+</button></div></div>';
+  }).join('');
+}
+
+function openDetail(pid) {
+  var p = products.find(function(x) { return x.id === pid; });
+  if (!p) return;
+  detailProduct = p; detailQty = 1; detailOptions = {};
+  var html = '<button class="close-btn" onclick="closeDetail()">✕</button>';
+  html += '<div style="text-align:center;font-size:48px;padding:16px">' + (p.image || '🍽️') + '</div>';
+  html += '<h2>' + p.name + '</h2>';
+  if (p.description) html += '<p style="color:#999;font-size:13px;margin-bottom:12px">' + p.description + '</p>';
+
+  fetch(API_BASE + "/api/options/" + pid)
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      var groups = d.groups || [];
+      for (var gi = 0; gi < groups.length; gi++) {
+        var g = groups[gi];
+        html += '<div class="opt-group"><h4>' + g.name + (g.isRequired ? ' *' : '') + '</h4>';
+        for (var ii = 0; ii < g.items.length; ii++) {
+          var it = g.items[ii];
+          var inputType = (g.type === 'single' || g.maxSelect === 1) ? 'radio' : 'checkbox';
+          var checked = it.isDefault ? ' checked' : '';
+          html += '<div class="opt-item" onclick="toggleOpt(this,' + g.id + ',' + it.id + ',\'' + inputType + '\',' + it.priceAdjustment + ',\'' + it.name.replace(/'/g, "\\'") + '\')">';
+          html += '<input type="' + inputType + '" name="grp' + g.id + '"' + checked + ' style="pointer-events:none">';
+          html += '<label>' + it.name + '</label>';
+          if (it.priceAdjustment > 0) html += '<span class="adj">+' + CURRENCY + Number(it.priceAdjustment).toFixed(2) + '</span>';
+          html += '</div>';
+          if (it.isDefault) {
+            if (!detailOptions[g.id]) detailOptions[g.id] = [];
+            if (inputType === 'radio') detailOptions[g.id] = [{itemId: it.id, name: it.name, price: it.priceAdjustment}];
+            else detailOptions[g.id].push({itemId: it.id, name: it.name, price: it.priceAdjustment});
+          }
+        }
+        html += '</div>';
+      }
+      finishDetail(html, p);
+    })
+    .catch(function() { finishDetail(html, p); });
+}
+
+function finishDetail(html, p) {
+  html += '<textarea class="note-input" id="detailNote" rows="2" placeholder="Notunuz (opsiyonel)"></textarea>';
+  html += '<div class="qty-row"><button class="qty-btn" onclick="changeQty(-1)">−</button><span class="qty-val" id="qtyVal">1</span><button class="qty-btn" onclick="changeQty(1)">+</button></div>';
+  html += '<button class="add-btn" id="addBtn" onclick="addToCart()">Sepete Ekle · ' + CURRENCY + Number(p.price).toFixed(2) + '</button>';
+  document.getElementById("detailContent").innerHTML = html;
+  document.getElementById("detailModal").style.display = "block";
+  updateAddBtn();
+}
+
+function toggleOpt(el, gid, iid, type, price, name) {
+  if (!detailOptions[gid]) detailOptions[gid] = [];
+  if (type === 'radio') { detailOptions[gid] = [{itemId: iid, name: name, price: price}]; }
+  else {
+    var idx = -1;
+    for (var i = 0; i < detailOptions[gid].length; i++) { if (detailOptions[gid][i].itemId === iid) { idx = i; break; } }
+    if (idx >= 0) detailOptions[gid].splice(idx, 1);
+    else detailOptions[gid].push({itemId: iid, name: name, price: price});
+  }
+  var input = el.querySelector('input');
+  if (type === 'radio') { var inputs = el.parentElement.querySelectorAll('input'); for (var i = 0; i < inputs.length; i++) inputs[i].checked = false; input.checked = true; }
+  else { var found = false; for (var i = 0; i < detailOptions[gid].length; i++) { if (detailOptions[gid][i].itemId === iid) { found = true; break; } } input.checked = found; }
+  updateAddBtn();
+}
+
+function changeQty(d) { detailQty = Math.max(1, detailQty + d); document.getElementById('qtyVal').textContent = detailQty; updateAddBtn(); }
+
+function updateAddBtn() {
+  var optPrice = 0;
+  var keys = Object.keys(detailOptions);
+  for (var k = 0; k < keys.length; k++) { var arr = detailOptions[keys[k]]; for (var i = 0; i < arr.length; i++) optPrice += arr[i].price; }
+  var total = (detailProduct.price + optPrice) * detailQty;
+  document.getElementById('addBtn').textContent = 'Sepete Ekle · ' + CURRENCY + total.toFixed(2);
+}
+
+function addToCart() {
+  var optPrice = 0; var opts = [];
+  var keys = Object.keys(detailOptions);
+  for (var k = 0; k < keys.length; k++) { var gid = keys[k]; var arr = detailOptions[gid]; for (var i = 0; i < arr.length; i++) { optPrice += arr[i].price; opts.push({groupId: +gid, itemId: arr[i].itemId, name: arr[i].name, price: arr[i].price}); } }
+  var note = document.getElementById('detailNote') ? document.getElementById('detailNote').value : '';
+  cart.push({productId: detailProduct.id, productName: detailProduct.name, qty: detailQty, unitPrice: detailProduct.price, optionPrice: optPrice, options: opts, note: note});
+  closeDetail(); updateBar();
+}
+
+function quickAdd(pid) {
+  var p = products.find(function(x) { return x.id === pid; });
+  if (!p) return;
+  cart.push({productId: p.id, productName: p.name, qty: 1, unitPrice: p.price, optionPrice: 0, options: [], note: ''});
+  updateBar();
+}
+
+function closeDetail() { document.getElementById('detailModal').style.display = 'none'; }
+
+function updateBar() {
+  var cnt = 0, tot = 0;
+  for (var i = 0; i < cart.length; i++) { cnt += cart[i].qty; tot += (cart[i].unitPrice + cart[i].optionPrice) * cart[i].qty; }
+  document.getElementById('barCnt').textContent = cnt;
+  document.getElementById('barTot').textContent = CURRENCY + tot.toFixed(2);
+  document.getElementById('bar').style.display = cnt > 0 ? 'flex' : 'none';
+}
+
+function openCart() {
+  var list = document.getElementById('cartList');
+  var html = '';
+  for (var i = 0; i < cart.length; i++) {
+    var c = cart[i];
+    html += '<div class="cart-item"><div class="ci-info"><div class="ci-name">' + c.qty + 'x ' + c.productName + '</div>';
+    if (c.options.length) html += '<div class="ci-opts">' + c.options.map(function(o) { return o.name; }).join(', ') + '</div>';
+    if (c.note) html += '<div class="ci-opts">📝 ' + c.note + '</div>';
+    html += '</div><div class="ci-price">' + CURRENCY + ((c.unitPrice + c.optionPrice) * c.qty).toFixed(2) + '</div><button class="ci-del" onclick="removeItem(' + i + ')">✕</button></div>';
+  }
+  list.innerHTML = html;
+  var tot = 0; for (var i = 0; i < cart.length; i++) tot += (cart[i].unitPrice + cart[i].optionPrice) * cart[i].qty;
+  document.getElementById('cartTotal').textContent = CURRENCY + tot.toFixed(2);
+  document.getElementById('cartModal').style.display = 'block';
+}
+
+function closeCart() { document.getElementById('cartModal').style.display = 'none'; }
+function removeItem(i) { cart.splice(i, 1); updateBar(); openCart(); if (cart.length === 0) closeCart(); }
+
+function submitOrder() {
+  if (cart.length === 0) return;
+  var btn = document.querySelector('.submit-btn');
+  btn.disabled = true; btn.textContent = 'Gönderiliyor...';
+  var items = [];
+  for (var i = 0; i < cart.length; i++) {
+    var c = cart[i];
+    items.push({productId: c.productId, productName: c.productName, qty: c.qty, unitPrice: c.unitPrice, optionPrice: c.optionPrice, options: c.options, note: c.note});
+  }
+  fetch(API_BASE + "/api/order", {
+    method: "POST", headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({branchId: BRANCH_ID, tableId: TABLE_ID, sessionToken: SESSION_TOKEN, items: items})
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    if (d.success) {
+      document.getElementById('successNum').textContent = '#' + d.orderNumber;
+      document.getElementById('success').style.display = 'flex';
+      closeCart();
+    } else { alert(d.error || 'Hata oluştu'); btn.disabled = false; btn.textContent = '✓ Siparişi Gönder'; }
+  })
+  .catch(function() { alert('Bağlantı hatası'); btn.disabled = false; btn.textContent = '✓ Siparişi Gönder'; });
+}
+
+function resetOrder() { cart = []; updateBar(); document.getElementById('success').style.display = 'none'; }
 </script>
 </body>
 </html>
-
-
-
