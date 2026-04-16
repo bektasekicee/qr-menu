@@ -179,6 +179,7 @@ function renderLanding() {
     h += '<button class="l-btn sec" onclick="showBill()">🧾 Hesabı Gör</button>';
   } else { bl.style.display = 'none'; }
   if (TS.show_pay) h += '<button class="l-btn sec" onclick="openPay()">💳 Ödeme Yap</button>';
+  if (TS.show_bill) h += '<button class="l-btn sec" id="billReqBtn" onclick="requestBill()">🔔 Garsondan Hesap İste</button>';
   btns.innerHTML = h;
 }
 
@@ -245,6 +246,9 @@ function updateBar() {
 }
 
 function openCart() {
+  // Buton state'ini sıfırla (önceki sipariş takıldıysa)
+  const btn = document.getElementById('orderBtn');
+  if (btn) { btn.disabled = false; btn.textContent = '✓ Siparişi Gönder'; }
   document.getElementById('cartList').innerHTML = cart.map((c, i) =>
     '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f0f0f0">' +
     '<span style="font-size:13px">' + c.qty + 'x ' + c.name + '</span>' +
@@ -533,6 +537,36 @@ function closePay() {
   closeOv('payOv');
   PAY_ID = null;
   goLanding();
+}
+
+/* ═══ BILL REQUEST (Garsondan Hesap İste) ═══ */
+let _billReqBusy = false;
+
+async function requestBill() {
+  if (_billReqBusy) return;
+  _billReqBusy = true;
+  const btn = document.getElementById('billReqBtn');
+  if (btn) { btn.disabled = true; btn.textContent = '🔔 Gönderiliyor...'; }
+  try {
+    const r = await fetch(API + '/api/request-bill', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ qr_code: QR })
+    });
+    const d = await r.json();
+    if (d.status === 'ok') {
+      toast(d.already_sent ? '🔔 Hesap isteğiniz zaten iletildi' : '✅ Hesap isteğiniz gönderildi!');
+      // 30sn geri sayım
+      if (btn) {
+        let sec = 30;
+        btn.textContent = '🔔 Gönderildi (' + sec + 's)';
+        const timer = setInterval(() => {
+          sec--;
+          if (sec <= 0) { clearInterval(timer); btn.disabled = false; btn.textContent = '🔔 Garsondan Hesap İste'; _billReqBusy = false; }
+          else { btn.textContent = '🔔 Gönderildi (' + sec + 's)'; }
+        }, 1000);
+      } else { setTimeout(() => { _billReqBusy = false; }, 30000); }
+    } else { toast(d.error || 'Gönderilemedi'); if (btn) { btn.disabled = false; btn.textContent = '🔔 Garsondan Hesap İste'; } _billReqBusy = false; }
+  } catch (e) { toast('Bağlantı hatası'); if (btn) { btn.disabled = false; btn.textContent = '🔔 Garsondan Hesap İste'; } _billReqBusy = false; }
 }
 
 /* ═══ UTILS ═══ */
